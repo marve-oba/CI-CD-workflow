@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#061119">
+  <title>ATMOS Weather Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body data-weather-theme="idle">
+  <div class="ambient" aria-hidden="true"><span></span><span></span><span></span></div>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="ATMOS home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span><strong>ATMOS</strong><small>Weather intelligence</small></span>
+      </a>
+      <div class="topbar-meta">
+        <span class="source-chip"><i></i> Open-Meteo live data</span>
+        <span class="version">build {{ app_version }}</span>
+      </div>
+    </header>
+
+    <section class="command-panel" aria-label="Weather search">
+      <form id="weather-form" class="search-form">
+        <label class="sr-only" for="city">City or place</label>
+        <span class="search-icon" aria-hidden="true"></span>
+        <input id="city" name="city" type="search" autocomplete="off" placeholder="Search a city or place" maxlength="80" value="{{ last_location or '' }}">
+        <button class="primary-btn" type="submit">Run weather scan</button>
+      </form>
+      <button class="location-btn" id="locate" type="button">
+        <span class="location-crosshair" aria-hidden="true"></span>
+        Use my location
+      </button>
+    </section>
+
+    <section class="status-line" aria-live="polite" aria-atomic="true">
+      <span id="status-dot" class="status-dot"></span>
+      <span id="status-text">Ready. Search a location to load live conditions.</span>
+    </section>
+
+    <section id="empty-state" class="empty-state">
+      <div class="radar" aria-hidden="true"><span></span><span></span><span></span><b></b></div>
+      <div>
+        <p class="eyebrow">Deployment-visible application</p>
+        <h1>Live weather, compact operational signals, and a build fingerprint you can verify after every release.</h1>
+        <p>Search for a city or use browser geolocation. No sample weather is rendered before a live request succeeds.</p>
+      </div>
+    </section>
+
+    <div id="dashboard" class="dashboard" hidden>
+      <section class="hero-grid">
+        <article class="current-card panel">
+          <div class="current-heading">
+            <div>
+              <p class="eyebrow">Current conditions</p>
+              <h1 id="location-name">—</h1>
+              <p id="observation-time" class="muted">—</p>
+            </div>
+            <span id="timezone-chip" class="timezone-chip">—</span>
+          </div>
+
+          <div class="current-main">
+            <div class="temperature-block">
+              <span id="temperature" class="temperature">—</span>
+              <span class="degree">°C</span>
+              <p id="condition" class="condition">—</p>
+              <p id="feels-like" class="muted">—</p>
+            </div>
+            <div class="weather-visual" aria-hidden="true">
+              <div class="weather-orb"><span class="orb-core"></span><span class="orb-cloud one"></span><span class="orb-cloud two"></span><span class="orb-rain"></span><span class="orb-flare"></span></div>
+            </div>
+          </div>
+
+          <div class="high-low">
+            <span>High <b id="today-high">—</b></span>
+            <span>Low <b id="today-low">—</b></span>
+            <span>Tomorrow <b id="tomorrow-range">—</b></span>
+          </div>
+        </article>
+
+        <aside class="flash-card panel">
+          <div class="section-head">
+            <div><p class="eyebrow">Flash report</p><h2>Condition signals</h2></div>
+            <span class="live-badge"><i></i> derived live</span>
+          </div>
+          <div id="flash-reports" class="flash-reports"></div>
+          <p class="disclaimer">Threshold-based summaries from forecast values. Not an official severe-weather alert service.</p>
+        </aside>
+      </section>
+
+      <section class="metrics-grid" aria-label="Current weather metrics">
+        <article class="metric panel"><span>Humidity</span><strong id="humidity">—</strong><small>relative</small></article>
+        <article class="metric panel"><span>Wind</span><strong id="wind">—</strong><small id="wind-direction">—</small></article>
+        <article class="metric panel"><span>Gusts</span><strong id="gusts">—</strong><small>km/h</small></article>
+        <article class="metric panel"><span>Pressure</span><strong id="pressure">—</strong><small>hPa</small></article>
+        <article class="metric panel"><span>Cloud</span><strong id="cloud">—</strong><small>cover</small></article>
+        <article class="metric panel"><span>UV max</span><strong id="uv">—</strong><small>today</small></article>
+      </section>
+
+      <section class="forecast-grid">
+        <article class="hourly-card panel">
+          <div class="section-head"><div><p class="eyebrow">Next eight hours</p><h2>Forecast timeline</h2></div><span id="forecast-date" class="muted"></span></div>
+          <div id="hourly-forecast" class="hourly-forecast"></div>
+        </article>
+
+        <article class="sun-card panel">
+          <div class="section-head"><div><p class="eyebrow">Today</p><h2>Daylight & rain</h2></div></div>
+          <div class="sun-arc" aria-hidden="true"><span class="arc"></span><span class="sun-dot"></span></div>
+          <dl class="day-facts">
+            <div><dt>Sunrise</dt><dd id="sunrise">—</dd></div>
+            <div><dt>Sunset</dt><dd id="sunset">—</dd></div>
+            <div><dt>Rain probability</dt><dd id="rain-probability">—</dd></div>
+          </dl>
+        </article>
+      </section>
+
+      <footer class="data-footer">
+        <span id="coordinates">—</span>
+        <span id="generated-at">—</span>
+        <span>Source: Open-Meteo</span>
+      </footer>
+    </div>
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>
