@@ -1,0 +1,6 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Generated local dependencies, scan output, and Git internals"
+paths = ['''(^|/)\.venv/''', '''(^|/)venv/''', '''(^|/)\.tmp/''', '''(^|/)\.git/''']

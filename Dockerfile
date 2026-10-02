@@ -12,7 +12,8 @@ RUN groupadd --gid 10001 atmos \
     && useradd --uid 10001 --gid atmos --no-create-home --shell /usr/sbin/nologin atmos
 
 COPY app/requirements.txt ./requirements.txt
-RUN python -m pip install --requirement requirements.txt
+RUN python -m pip install --requirement requirements.txt \
+    && python -m pip uninstall --yes pip
 
 COPY --chown=atmos:atmos app/app.py ./app.py
 COPY --chown=atmos:atmos app/templates ./templates

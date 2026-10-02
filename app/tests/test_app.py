@@ -55,5 +55,51 @@ class WeatherAppTests(unittest.TestCase):
         self.assertEqual(reports[0]["title"], "Strong gust signal")
 
 
+class WeatherTransportTests(unittest.TestCase):
+    @patch.object(weather_app.http.client, "HTTPSConnection")
+    def test_rejects_untrusted_urls_before_connecting(self, mock_connection):
+        for url in (
+            "file:///etc/passwd",
+            "http://api.open-meteo.com/v1/forecast",
+            "https://example.com/",
+            "https://api.open-meteo.com:8443/",
+            "https://user:password@api.open-meteo.com/",
+        ):
+            with self.subTest(url=url), self.assertRaises(ValueError):
+                weather_app.fetch_json(url)
+        mock_connection.assert_not_called()
+
+    @patch.object(weather_app.http.client, "HTTPSConnection")
+    def test_fetches_json_over_https_and_closes_connection(self, mock_connection):
+        connection = mock_connection.return_value
+        response = connection.getresponse.return_value
+        response.status = 200
+        response.read.return_value = b'{"temperature": 21}'
+        result = weather_app.fetch_json("https://api.open-meteo.com/v1/forecast?latitude=43")
+        self.assertEqual(result, {"temperature": 21})
+        mock_connection.assert_called_once_with("api.open-meteo.com", timeout=weather_app.REQUEST_TIMEOUT)
+        connection.request.assert_called_once_with(
+            "GET", "/v1/forecast?latitude=43", headers={"User-Agent": "atmos-weather-lab/2.0"}
+        )
+        connection.close.assert_called_once()
+
+    @patch.object(weather_app.http.client, "HTTPSConnection")
+    def test_does_not_follow_redirects(self, mock_connection):
+        connection = mock_connection.return_value
+        connection.getresponse.return_value.status = 302
+        with self.assertRaises(weather_app.urllib.error.URLError):
+            weather_app.fetch_json("https://api.open-meteo.com/")
+        connection.request.assert_called_once()
+        connection.close.assert_called_once()
+
+    @patch.object(weather_app.http.client, "HTTPSConnection")
+    def test_network_failure_closes_connection(self, mock_connection):
+        connection = mock_connection.return_value
+        connection.request.side_effect = OSError("connection reset")
+        with self.assertRaises(weather_app.urllib.error.URLError):
+            weather_app.fetch_json("https://api.open-meteo.com/")
+        connection.close.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()

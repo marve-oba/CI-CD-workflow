@@ -1,8 +1,8 @@
+import http.client
 import json
 import os
 import urllib.error
 import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -60,9 +60,29 @@ WEATHER_CODES = {
 
 
 def fetch_json(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "atmos-weather-lab/2.0"})
-    with urllib.request.urlopen(req, timeout=REQUEST_TIMEOUT) as response:
+    parsed = urllib.parse.urlsplit(url)
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname not in {"api.open-meteo.com", "geocoding-api.open-meteo.com"}
+        or parsed.port not in {None, 443}
+        or parsed.username is not None
+        or parsed.password is not None
+    ):
+        raise ValueError("Unsupported weather provider URL")
+
+    connection = http.client.HTTPSConnection(parsed.hostname, timeout=REQUEST_TIMEOUT)
+    try:
+        target = urllib.parse.urlunsplit(("", "", parsed.path or "/", parsed.query, ""))
+        connection.request("GET", target, headers={"User-Agent": "atmos-weather-lab/2.0"})
+        response = connection.getresponse()
+        # Do not follow redirects to an unvalidated host.
+        if response.status != 200:
+            raise urllib.error.URLError(f"Weather provider returned HTTP {response.status}")
         return json.loads(response.read().decode("utf-8"))
+    except (OSError, http.client.HTTPException) as exc:
+        raise urllib.error.URLError(str(exc)) from exc
+    finally:
+        connection.close()
 
 
 def as_float(value, field, minimum=None, maximum=None):
@@ -293,4 +313,4 @@ def weather():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+    app.run(host=os.getenv("HOST", "127.0.0.1"), port=int(os.getenv("PORT", "8080")))
